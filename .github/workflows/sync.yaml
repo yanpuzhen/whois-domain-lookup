@@ -1,0 +1,45 @@
+name: Upstream Sync
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    # 每天国际标准时间 00:00 (北京时间早上 8:00) 执行一次
+    - cron: "0 0 * * *"
+  # 允许手动在 Actions 页面点击触发
+  workflow_dispatch:
+
+jobs:
+  sync_latest_from_upstream:
+    name: Sync latest commits from upstream repo
+    runs-on: ubuntu-latest
+    if: ${{ github.event.repository.fork }} # 只有当这是一个 Fork 仓库时才运行
+
+    steps:
+      # 第一步：检出代码
+      - name: Checkout target repo
+        uses: actions/checkout@v3
+
+      # 第二步：执行同步动作
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        with:
+          # 上游仓库地址 (根据你上一个问题，我预填了 reg233/whois-domain-lookup)
+          upstream_sync_repo: reg233/whois-domain-lookup
+          # 上游仓库的分支 (通常是 main 或 master，该项目是 main)
+          upstream_sync_branch: main
+          # 你仓库的分支
+          target_sync_branch: main
+          # GitHub 自动生成的 Token，无需手动设置
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          # 设置为 false 表示直接合并，设置为 true 只测试不合并
+          test_mode: false
+
+      # 第三步：打印日志（可选）
+      - name: Sync check
+        if: failure()
+        run: |
+          echo "[Error] 由于上游仓库有冲突，同步失败，请手动合并。"
+          exit 1
